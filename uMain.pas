@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls, Data.DB,
   System.ImageList, Vcl.ImgList, Vcl.Grids, Vcl.DBGrids, Datasnap.DBClient,
-  Vcl.ComCtrls, Vcl.Buttons, ShellApi;
+  Vcl.ComCtrls, Vcl.Buttons, Winapi.ShellAPI;
 
 type TRecordType = (
   rtData = 0,
@@ -36,6 +36,8 @@ type
     procedure edtHexFileLeftButtonClick(Sender: TObject);
     procedure dsDataAfterOpen(DataSet: TDataSet);
     procedure btnEditorClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     function GetByte(Value: String; Index: Integer): UInt8;
     function GetWord(Value: string; Index: Integer): UInt16;
@@ -46,6 +48,8 @@ type
     procedure FormatHexString(Sender: TField; var Text: string; DisplayText: Boolean);
     procedure FormatChksum(Sender: TField; var Text: string; DisplayText: Boolean);
     procedure FormatType(Sender: TField; var Text: string; DisplayText: Boolean);
+  protected
+    procedure WMDropFiles(var Msg: TMessage); message WM_DROPFILES;
   public
     procedure CreateDataSet;
     procedure LoadFile(FileName: string);
@@ -231,6 +235,16 @@ begin
     Text := RecordTypeToString(TRecordType(Sender.AsInteger));
 end;
 
+procedure TfrmMain.FormCreate(Sender: TObject);
+begin
+  DragAcceptFiles(Self.Handle, True);
+end;
+
+procedure TfrmMain.FormDestroy(Sender: TObject);
+begin
+  DragAcceptFiles(Self.Handle, False);
+end;
+
 function TfrmMain.GetByte(Value: String; Index: Integer): UInt8;
 begin
   Result := StrToInt('$' + Copy(Value, Index, 2));
@@ -333,6 +347,37 @@ begin
     sl.Free;
     Screen.Cursor := crDefault;
   end;
+end;
+
+procedure TfrmMain.WMDropFiles(var Msg: TMessage);
+var
+  hDrop: THandle;
+  FileCount: Integer;
+  NameLen: Integer;
+  i: Integer;
+  s: string;
+begin
+  hDrop := Msg.wParam;
+  FileCount := DragQueryFile(hDrop , $FFFFFFFF, nil, 0);
+
+  for i := 0 to FileCount - 1 do begin
+    NameLen := DragQueryFile(hDrop, i, nil, 0) + 1;
+    SetLength(s, NameLen);
+    DragQueryFile(hDrop, i, Pointer(s), NameLen);
+    s := Trim(s);
+
+    if FileExists(s) and (LowerCase(ExtractFileExt(s)) = '.hex') then
+      try
+        edtHexFile.Text := s;
+        CreateDataSet;
+        LoadFile(s);
+        grdData.SetFocus;
+        Break;
+      except
+      end;
+  end;
+
+  DragFinish(hDrop);
 end;
 
 end.
