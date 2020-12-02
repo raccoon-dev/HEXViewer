@@ -38,6 +38,7 @@ type
     procedure btnEditorClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     function GetByte(Value: String; Index: Integer): UInt8;
     function GetWord(Value: string; Index: Integer): UInt16;
@@ -243,6 +244,22 @@ end;
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   DragAcceptFiles(Self.Handle, False);
+end;
+
+procedure TfrmMain.FormShow(Sender: TObject);
+var
+  i: Integer;
+begin
+  for i := 1 to ParamCount do
+    if FileExists(ParamStr(i)) and (LowerCase(ExtractFileExt(ParamStr(i))) = '.hex') then
+      try
+        edtHexFile.Text := ParamStr(i);
+        CreateDataSet;
+        LoadFile(ParamStr(i));
+        grdData.SetFocus;
+        Break;
+      except
+      end;
 end;
 
 function TfrmMain.GetByte(Value: String; Index: Integer): UInt8;
